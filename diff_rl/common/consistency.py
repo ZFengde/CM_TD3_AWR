@@ -197,3 +197,14 @@ class Consistency_Model:
         q_selected_action = critic.q1_forward(state, action)
         advantage = q_selected_action - value
         return advantage
+    
+    def sample_with_epsilon(self, model, state, epsilon=0.1, gaussian_std=0.2):
+        batch_size = state.shape[0]
+        cm_actions = self.sample_onestep(model, state)
+        noise = th.randn_like(cm_actions) * gaussian_std
+        noisy_actions = cm_actions + noise
+        noisy_actions = th.clamp(noisy_actions, self.action_low, self.action_high)
+        explore_mask = (th.rand(batch_size, device=self.device) < epsilon).unsqueeze(-1)
+        final_actions = th.where(explore_mask, noisy_actions, cm_actions)
+
+        return final_actions
