@@ -119,7 +119,7 @@ class CM_TD3(OffPolicyAlgorithm):
             self._n_updates += 1
             # Sample replay buffer
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)  # type: ignore[union-attr]
-            sampled_action = self.consistency_model.sample(model=self.actor, state=replay_data.observations)
+            # sampled_action = self.consistency_model.sample(model=self.actor, state=replay_data.observations)
 
             with th.no_grad():
                 # Select action according to policy and add clipped noise
@@ -159,8 +159,8 @@ class CM_TD3(OffPolicyAlgorithm):
                                               state=replay_data.observations,
                                               )
                 cm_losses = compute_cm_losses()
-                # TODO, to make this awr version
-                actor_loss = (cm_losses["consistency_loss"] - self.critic.q1_forward(replay_data.observations, sampled_action)).mean()
+                # actor_loss = (cm_losses["consistency_loss"] - self.critic.q1_forward(replay_data.observations, sampled_action)).mean()
+                actor_loss = (cm_losses["consistency_loss"]).mean()
                 actor_losses.append(actor_loss.item())
 
                 # Optimize the actor
