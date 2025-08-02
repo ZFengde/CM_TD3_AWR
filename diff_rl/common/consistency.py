@@ -190,10 +190,14 @@ class Consistency_Model:
         return x_0
     
     def advantages(self, critic, actor, state, action):
-        state_rpt = th.repeat_interleave(state.unsqueeze(1), repeats=50, dim=1)
-        scaled_action = self.batch_multi_sample(model=actor, state=state_rpt)
-        q_value = critic.q1_batch_forward(state_rpt, scaled_action)
-        value = q_value.mean(1) # should be batch * 1
-        q_selected_action = critic.q1_forward(state, action)
-        advantage = q_selected_action - value
-        return advantage
+        G = 50
+        state_rpt = th.repeat_interleave(state.unsqueeze(1), repeats=G, dim=1)
+        scaled_action = self.batch_multi_sample(model=actor, state=state_rpt)  # [B, G, act_dim]
+        q_values = critic.q1_batch_forward(state_rpt, scaled_action)  
+        mean_q = q_values.mean(dim=1, keepdim=True).squeeze() 
+        std_q = q_values.std(dim=1, keepdim=True).squeeze() + 1e-8 
+
+        q_selected_action = critic.q1_forward(state, action).squeeze()
+        advantage = (q_selected_action - mean_q) / std_q  
+        return advantage  # [B]
+ 
