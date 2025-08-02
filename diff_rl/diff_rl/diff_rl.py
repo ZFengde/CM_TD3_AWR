@@ -119,14 +119,14 @@ class CM_TD3(OffPolicyAlgorithm):
             self._n_updates += 1
             # Sample replay buffer
             replay_data = self.replay_buffer.sample(batch_size, env=self._vec_normalize_env)  # type: ignore[union-attr]
-            sampled_action = self.consistency_model.sample_with_epsilon(model=self.actor, state=replay_data.observations)
+            sampled_action = self.consistency_model.sample(model=self.actor, state=replay_data.observations)
 
             with th.no_grad():
                 # Select action according to policy and add clipped noise
                 noise = replay_data.actions.clone().data.normal_(0, self.target_policy_noise)
                 noise = noise.clamp(-self.target_noise_clip, self.target_noise_clip) # here is the [-1, 1] action
 
-                next_actions = (self.consistency_model.sample_with_epsilon(model=self.actor_target, state=replay_data.next_observations) + noise).clamp(-1, 1)
+                next_actions = (self.consistency_model.sample(model=self.actor_target, state=replay_data.next_observations) + noise).clamp(-1, 1)
 
                 # Compute the next Q-values: min over all critics targets
                 next_q_values = th.cat(self.critic_target(replay_data.next_observations, next_actions), dim=1)

@@ -303,7 +303,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             state_rpt = th.repeat_interleave(state, repeats=50, dim=0)
 
             # This is sample from consistency model
-            scaled_action = self.consistency_model.sample_with_epsilon(model=self.actor, state=state_rpt)
+            scaled_action = self.consistency_model.sample(model=self.actor, state=state_rpt)
             q_value = self.critic_target.q1_forward(state_rpt, scaled_action).flatten()
             soft_q_value = F.softmax(q_value, dim=0)
             idx = th.multinomial(soft_q_value, num_samples=1) # this mechanism works a bit since all q-values are similar
