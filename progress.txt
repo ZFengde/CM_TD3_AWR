@@ -1,0 +1,38 @@
+无优选行为策略
+
+1. ppo style loss
+def advantages(self, critic, actor, state, action):
+    G = 50
+    state_rpt = th.repeat_interleave(state.unsqueeze(1), repeats=G, dim=1)
+    scaled_action = self.batch_multi_sample(model=actor, state=state_rpt)  # [B, G, act_dim]
+    q_values = critic.q1_batch_forward(state_rpt, scaled_action)  
+    mean_q = q_values.mean(dim=1, keepdim=True).squeeze() 
+    std_q = q_values.std(dim=1, keepdim=True).squeeze() + 1e-8 
+
+    q_selected_action = critic.q1_forward(state, action).squeeze()
+    advantage = (q_selected_action - mean_q) / std_q  
+    return advantage  # [B]
+
+with th.no_grad():
+    adv = self.advantages(critic, model, state, x_start)  # Q(s,a) - V(s)
+    # 标准化（可选）
+    adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+    adv = th.exp(adv / self.beta).clamp(max=self.max_weight)
+# t 越小， weights越大
+final_weights = schedule_weights * adv.squeeze()
+consistency_diffs = (distiller - distiller_target) ** 2 # get the consistency difference
+consistency_loss = mean_flat(consistency_diffs) * final_weights # weighted average as loss
+
+ppo_loss_1 = adv * distance_ratio 
+ppo_loss_2 = adv * th.clamp(distance_ratio, 1 - self.clip_range, 1 + self.clip_range)
+
+ppo_loss = -th.min(ppo_loss_1, ppo_loss_2)
+    2. ppo_loss = th.min(ppo_loss_1, ppo_loss_2)
+
+2. 不太行
+ppo_loss = -mean_flat(consistency_diffs) * th.clamp(distance_ratio.detach(), 1 - self.clip_range, 1 + self.clip_range) * final_weights
+11:08
+
+3. 不太行
+ppo_loss = -mean_flat(consistency_diffs) * th.clamp(dth.clamp(distance_ratio,1 - clip_range, 1 + clip_range) * weightsistance_ratio.detach(), 1 - self.clip_range, 1 + self.clip_range) * schedule_weights
+11:12

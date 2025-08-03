@@ -55,6 +55,7 @@ class Consistency_Model:
 
         self.beta = 0.1
         self.max_weight = 20
+        self.clip_range = 0.2
         # this is for sample
         self.sigmas = self.get_sigmas_karras(self.steps, self.sigma_min, self.sigma_max, self.rho, self.device)
 
@@ -126,22 +127,32 @@ class Consistency_Model:
         distiller_target = target_denoise_fn(x_t2, t2, state) # predicted target based on t2=t_n
         distiller_target = distiller_target.detach()
 
+        distance = 0.01 + th.norm(distiller - x_start, dim=1, keepdim=True).squeeze()
+        distance_target = 0.01 + th.norm(distiller_target - x_start, dim=1, keepdim=True).squeeze()
+        distance_ratio = distance/distance_target
+
         snrs = self.get_snr(t) # sigmas**-2
-        schedule_weights = get_weightings("snr", snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
-        # schedule_weights = get_weightings(self.weight_schedule, snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
+        # schedule_weights = get_weightings("karras", snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
+        schedule_weights = get_weightings(self.weight_schedule, snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
         # === compute AWR weight ===
         with th.no_grad():
             adv = self.advantages(critic, model, state, x_start)  # Q(s,a) - V(s)
             # 标准化（可选）
             adv = (adv - adv.mean()) / (adv.std() + 1e-8)
-            awr_weights = th.exp(adv / self.beta).clamp(max=self.max_weight)
+            adv = th.exp(adv / self.beta).clamp(max=self.max_weight)
         # t 越小， weights越大
-        final_weights = schedule_weights * awr_weights.squeeze()
+        final_weights = schedule_weights * adv.squeeze()
         consistency_diffs = (distiller - distiller_target) ** 2 # get the consistency difference
         consistency_loss = mean_flat(consistency_diffs) * final_weights # weighted average as loss
 
+        ppo_loss_1 = adv * distance_ratio 
+        ppo_loss_2 = adv * th.clamp(distance_ratio, 1 - self.clip_range, 1 + self.clip_range)
+
+        ppo_loss = -th.min(ppo_loss_1, ppo_loss_2)
+
         terms = {}
         terms["consistency_loss"] = consistency_loss
+        terms["ppo_loss"] = ppo_loss
 
         return terms
 
