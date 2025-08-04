@@ -159,8 +159,8 @@ class CM_TD3(OffPolicyAlgorithm):
                                               state=replay_data.observations,
                                               )
                 cm_losses = compute_cm_losses()
-                # actor_loss = (cm_losses["consistency_loss"] - self.critic.q1_forward(replay_data.observations, sampled_action)).mean()
-                actor_loss = (cm_losses["ppo_loss"] - self.critic.q1_forward(replay_data.observations, sampled_action)).mean()
+                actor_loss = (cm_losses["consistency_loss"] - self.critic.q1_forward(replay_data.observations, sampled_action)).mean()
+                # actor_loss = (cm_losses["ppo_loss"] - self.critic.q1_forward(replay_data.observations, sampled_action)).mean()
                 actor_losses.append(actor_loss.item())
 
                 # Optimize the actor

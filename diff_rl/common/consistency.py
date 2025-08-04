@@ -143,16 +143,21 @@ class Consistency_Model:
         # t 越小， weights越大
         final_weights = schedule_weights * adv.squeeze()
         consistency_diffs = (distiller - distiller_target) ** 2 # get the consistency difference
-        consistency_loss = mean_flat(consistency_diffs) * final_weights # weighted average as loss
 
-        ppo_loss_1 = adv * distance_ratio 
-        ppo_loss_2 = adv * th.clamp(distance_ratio, 1 - self.clip_range, 1 + self.clip_range)
+        # 计算 mask：在 clamp 范围内为 True，否则为 False
+        mask = (distance_ratio >= 1 - self.clip_range) & (distance_ratio <= 1 + self.clip_range)
+        # 转成 float 0/1（也可以直接用 bool 做 element-wise 乘法）
+        mask = mask.float()
+        consistency_loss = mean_flat(consistency_diffs) * final_weights * mask # weighted average as loss
 
-        ppo_loss = -th.min(ppo_loss_1, ppo_loss_2)
+        # ppo_loss_1 = adv * distance_ratio 
+        # ppo_loss_2 = adv * th.clamp(distance_ratio, 1 - self.clip_range, 1 + self.clip_range)
+
+        # ppo_loss = -th.min(ppo_loss_1, ppo_loss_2)
 
         terms = {}
         terms["consistency_loss"] = consistency_loss
-        terms["ppo_loss"] = ppo_loss
+        # terms["ppo_loss"] = ppo_loss
 
         return terms
 
