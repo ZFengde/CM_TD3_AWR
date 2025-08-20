@@ -132,8 +132,8 @@ class Consistency_Model:
         distance_ratio = distance/distance_target
 
         snrs = self.get_snr(t) # sigmas**-2
-        # schedule_weights = get_weightings("snr+1", snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
-        schedule_weights = get_weightings(self.weight_schedule, snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
+        schedule_weights = get_weightings("snr+1", snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
+        # schedule_weights = get_weightings(self.weight_schedule, snrs, self.sigma_data) # lambda(t_n), get different weights based on snrs: snrs + 1.0 / sigma_data**-2
         # === compute AWR weight ===
         with th.no_grad():
             adv = self.advantages(critic, model, state, x_start)  # Q(s,a) - V(s)
